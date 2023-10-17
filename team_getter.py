@@ -33,7 +33,7 @@ for team_id in ids_das_equipes:
 
             for stat_type, stats in player_data.items():
                 for stat in stats:
-                    if stat['player']['name'] == player_name:  # Verifique se as estatísticas pertencem ao jogador atual
+                    if stat['player']['name'] == player_name:  
                         for stat_key, stat_value in stat['statistics'].items():
                             col_name = f"{stat_type}_{stat_key}"
                             player_stats[col_name] = stat_value

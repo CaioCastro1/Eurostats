@@ -50,3 +50,6 @@ cols_to_keep = [col for col in df.columns if '_appearances' not in col]
 df = df[cols_to_keep]
 df.to_excel('Jogadores_Grupo_C.xlsx', index=False)
 print(df)
+
+#ola ola caiaiaiaio ola 
+

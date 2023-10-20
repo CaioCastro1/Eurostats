@@ -1,11 +1,22 @@
 import requests
 import pandas as pd
 
+# Cada equipe possui um ID, que deve ser incrementado no URL de API
 ids_das_equipes = [2829,2999,2714,2547]
+
+# Cada campeonato tem um ID também
+id_do_campeonato = [7]
+
+# Esse é URL de base para as APIs, encontrado no código fonte
 base_url = "https://api.sofascore.com/api/v1/team/{team_id}/unique-tournament/{tournament_id}/season/52162/top-players/overall"
+
+# Dataframe inicial com variáveis dos jogadores
 df = pd.DataFrame()
+
 for team_id in ids_das_equipes:
-    reqUrl= base_url.format(team_id=team_id, tournament_id=7)  
+    
+    #
+    reqUrl= base_url.format(team_id=team_id, tournament_id=id_do_campeonato)  
     headersList = {
     "Accept": "*/*",
     "User-Agent": "Thunder Client (https://www.thunderclient.com)" 
@@ -42,8 +53,7 @@ for team_id in ids_das_equipes:
     nova_df = pd.DataFrame(player_data_list)
 
     df = pd.concat([df, nova_df], ignore_index=True)
-cols_to_keep = [col for col in df.columns if '_id' not in col]
-df = df[cols_to_keep]
+
 cols_to_keep = [col for col in df.columns if '_type' not in col]
 df = df[cols_to_keep]
 cols_to_keep = [col for col in df.columns if '_appearances' not in col]
@@ -51,5 +61,4 @@ df = df[cols_to_keep]
 df.to_excel('Jogadores_Grupo_C.xlsx', index=False)
 print(df)
 
-#ola ola caiaiaiaio ola 
 

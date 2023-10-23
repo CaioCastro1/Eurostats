@@ -4,6 +4,36 @@ import pandas as pd
 # Cada equipe possui um ID, que deve ser incrementado no URL de API
 ids_das_equipes = [2829,2999,2714,2547]
 
+# Headers para acessar o Thunder Client
+headersList = {
+        "Accept": "*/*",
+        "User-Agent": "Thunder Client (https://www.thunderclient.com)"
+    }
+
+# Método para pegar os IDs dos Players, que seriam usados futuramente
+def get_player_ids(): 
+    
+    link = "https://api.sofascore.com/api/v1/team/{team}/unique-tournament/7/season/52162/top-players/overall"
+    player_data = []
+
+
+    for team in ids_das_equipes:
+        reqUrl= link.format(team=team) 
+        payload = ""
+        response = requests.request("GET", reqUrl, data=payload, headers=headersList)
+        data = response.json()['topPlayers']
+
+        for jogador in data["rating"]:
+            nome = jogador["player"]["slug"]
+            id_jogador = jogador["player"]["id"]
+            player_data.append((nome, id_jogador))
+        print("ihaa")
+    return player_data
+
+player_data = get_player_ids()
+
+df = pd.DataFrame(player_data, columns=[player_data])
+
 # Cada campeonato tem um ID também
 id_do_campeonato = [7]
 
@@ -12,6 +42,8 @@ base_url = "https://api.sofascore.com/api/v1/team/{team_id}/unique-tournament/{t
 
 # Dataframe inicial com variáveis dos jogadores
 df = pd.DataFrame()
+
+
 
 for team_id in ids_das_equipes:
     

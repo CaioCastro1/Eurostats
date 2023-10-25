@@ -4,7 +4,7 @@ import datetime
 import re
 
 # Cada equipe possui um ID, que deve ser incrementado no URL de API
-ids_das_equipes = [2829,2999,2714,2547]
+ids_das_equipes = [2829,2714, 2547,2999]
 
 # Cada campeonato tem um ID também
 tournament_id = [7]
@@ -57,7 +57,7 @@ def get_player_basic_info():
         position = data.get("position", "")
         jersey_number = data.get("jerseyNumber", "")
         height = data.get("height", "")
-        preferred_foot = data.get("preferredFoot", "")
+        preferred_foot = data.get("preferredFoot", "Right")
         country = data.get("country", {}).get("name", "")
         
         birth_timestamp = data.get("dateOfBirthTimestamp")
@@ -98,16 +98,23 @@ def get_player_data():
                         for stat in stats:
                             if stat['player']['name'] == player_name:
                                 for stat_key, stat_value in stat['statistics'].items():
-                                    # Jeito que achei de eliminar colunas inúteis
                                     if stat_type == stat_key:
-                                        stat_type = convert_camel_case_to_readable(stat_type)
-                                        col_name = stat_type
+                                        col_name = convert_camel_case_to_readable(stat_key)
                                         player_stats[col_name] = stat_value
+
+                    for stat_type, stats in player_data.items():
+                        for stat in stats:
+                            if stat['player']['name'] == player_name:
+                                for stat_key, stat_value in stat['statistics'].items():
+                                      # Quase esqueci dessas!
+                                    if "Percentage" in stat_key:
+                                        col_name = convert_camel_case_to_readable(stat_key)
+                                        player_stats[col_name] = stat_value
+
                     player_data_list.append(player_stats)
 
     df = pd.DataFrame(player_data_list)
     df = df.fillna(0)
-
     return df  
 
 # Vai ser usado para resolver nomenclatura
@@ -130,6 +137,8 @@ df_info = get_player_basic_info()
 df_final = pd.merge(df_info, df_data, on='Name', how='left')
 
 df_final.to_excel('Jogadores_Grupo_C.xlsx', index=False)
+
+print(df_final)
 
         
 

@@ -1,8 +1,16 @@
 import requests
 import pandas as pd
+import datetime
+import re
 
 # Cada equipe possui um ID, que deve ser incrementado no URL de API
 ids_das_equipes = [2829,2999,2714,2547]
+
+# Cada campeonato tem um ID também
+tournament_id = [7]
+
+# Será utilizado para conseguir idades
+current_date = datetime.date.today()
 
 # Headers para acessar o Thunder Client
 headersList = {
@@ -10,87 +18,126 @@ headersList = {
         "User-Agent": "Thunder Client (https://www.thunderclient.com)"
     }
 
-# Método para pegar os IDs dos Players, que seriam usados futuramente
+# Método para pegar os IDs dos Players, que serão usados futuramente
 def get_player_ids(): 
-    
-    link = "https://api.sofascore.com/api/v1/team/{team}/unique-tournament/7/season/52162/top-players/overall"
-    player_data = []
+    link = "https://api.sofascore.com/api/v1/team/{team}/unique-tournament/{tournament}/season/52162/top-players/overall"
+    player_ids = []
 
+    for tournament in tournament_id:
+        for team in ids_das_equipes:
+            reqUrl = link.format(team=team, tournament=tournament) 
+            payload = ""
+            response = requests.request("GET", reqUrl, data=payload, headers=headersList)
+            data = response.json()
 
-    for team in ids_das_equipes:
-        reqUrl= link.format(team=team) 
+            # Navegar o JSON para puxar os IDs
+            for jogador in data["topPlayers"]["rating"]:
+                nome = jogador["player"]["name"]
+                id_jogador = jogador["player"]["id"]
+                player_ids.append((nome, id_jogador))
+
+    return player_ids
+
+player_ids = get_player_ids()
+# Método para pegar as variáveis de interesse
+def get_player_basic_info():
+    link = "https://api.sofascore.com/api/v1/player/{jogador_id}"
+    player_info = []
+
+    for player in player_ids:
+        nome = player[0]
+        id = player[1]
+        reqUrl = link.format(jogador_id=id)
         payload = ""
         response = requests.request("GET", reqUrl, data=payload, headers=headersList)
-        data = response.json()['topPlayers']
+        data = response.json()["player"]
 
-        for jogador in data["rating"]:
-            nome = jogador["player"]["slug"]
-            id_jogador = jogador["player"]["id"]
-            player_data.append((nome, id_jogador))
-        print("ihaa")
-    return player_data
+        # Pegar as informações, reconhecendo que as vezes o jogador não tem uma informação (sofri muito com alguns reservas do Leverkusen)
+        club = data.get("team", {}).get("name", "")
+        position = data.get("position", "")
+        jersey_number = data.get("jerseyNumber", "")
+        height = data.get("height", "")
+        preferred_foot = data.get("preferredFoot", "")
+        country = data.get("country", {}).get("name", "")
+        
+        birth_timestamp = data.get("dateOfBirthTimestamp")
+        if birth_timestamp:
+            birth = datetime.datetime.fromtimestamp(birth_timestamp)
+            age = current_date.year - birth.year - ((current_date.month, current_date.day) < (birth.month, birth.day))
+        else:
+            age = ""
+        
+        # Criando a tupla que vai ser posta no df
+        player_info.append((nome, club, position, jersey_number, height, preferred_foot, country, age))
 
-player_data = get_player_ids()
+    df_info = pd.DataFrame(player_info, columns=["Name", "Club", "Position", "Jersey Number", "Height", "Preferred Foot", "Country", "Age"])
+    return df_info
 
-df = pd.DataFrame(player_data, columns=[player_data])
-
-# Cada campeonato tem um ID também
-id_do_campeonato = [7]
-
-# Esse é URL de base para as APIs, encontrado no código fonte
-base_url = "https://api.sofascore.com/api/v1/team/{team_id}/unique-tournament/{tournament_id}/season/52162/top-players/overall"
-
-# Dataframe inicial com variáveis dos jogadores
-df = pd.DataFrame()
-
-
-
-for team_id in ids_das_equipes:
-    
-    #
-    reqUrl= base_url.format(team_id=team_id, tournament_id=id_do_campeonato)  
-    headersList = {
-    "Accept": "*/*",
-    "User-Agent": "Thunder Client (https://www.thunderclient.com)" 
-    }
-
-    payload = ""
-
-    response = requests.request("GET", reqUrl, data=payload, headers=headersList)
-    estat = response.json()['topPlayers']
-
-    data = [estat]
-
+def get_player_data():
+    link = "https://api.sofascore.com/api/v1/team/{team_id}/unique-tournament/{tournament_id}/season/52162/top-players/overall"
     player_data_list = []
+    df = pd.DataFrame()
 
-    for player_data in data:
-        for rating_stat in player_data['rating']:
-            player_info = rating_stat['player']
-            player_name = player_info['name']
-            player_position = player_info['position']
+    for tournament in tournament_id:
+        for team in ids_das_equipes:
+            reqUrl = link.format(team_id=team, tournament_id=tournament) 
+            payload = ""
+            response = requests.request("GET", reqUrl, data=payload, headers=headersList)
+            estat = response.json()['topPlayers']
+            data = [estat]
 
-            player_stats = {
-                'name': player_name,
-                'position': player_position,
-            }
+            for player_data in data:
+                for rating_stat in player_data['rating']:
+                    player_info = rating_stat['player']
+                    player_name = player_info['name']
+                    player_stats = {
+                        'Name': player_name
+                    }
 
-            for stat_type, stats in player_data.items():
-                for stat in stats:
-                    if stat['player']['name'] == player_name:  
-                        for stat_key, stat_value in stat['statistics'].items():
-                            col_name = f"{stat_type}_{stat_key}"
-                            player_stats[col_name] = stat_value
-            player_data_list.append(player_stats)
+                    for stat_type, stats in player_data.items():
+                        for stat in stats:
+                            if stat['player']['name'] == player_name:
+                                for stat_key, stat_value in stat['statistics'].items():
+                                    # Jeito que achei de eliminar colunas inúteis
+                                    if stat_type == stat_key:
+                                        stat_type = convert_camel_case_to_readable(stat_type)
+                                        col_name = stat_type
+                                        player_stats[col_name] = stat_value
+                    player_data_list.append(player_stats)
 
-    nova_df = pd.DataFrame(player_data_list)
+    df = pd.DataFrame(player_data_list)
+    df = df.fillna(0)
 
-    df = pd.concat([df, nova_df], ignore_index=True)
+    return df  
 
-cols_to_keep = [col for col in df.columns if '_type' not in col]
-df = df[cols_to_keep]
-cols_to_keep = [col for col in df.columns if '_appearances' not in col]
-df = df[cols_to_keep]
-df.to_excel('Jogadores_Grupo_C.xlsx', index=False)
-print(df)
+# Vai ser usado para resolver nomenclatura
+def convert_camel_case_to_readable(s):
+    result = ""
+
+    for char in s:
+        if char.isupper():
+            result += " " + char
+        else:
+            result += char
+
+    return result.strip().capitalize()
+
+df_data = get_player_data()
+
+df_info = get_player_basic_info()
+
+# Merge para juntar as duas tabelas
+df_final = pd.merge(df_info, df_data, on='Name', how='left')
+
+df_final.to_excel('Jogadores_Grupo_C.xlsx', index=False)
+
+        
+
+
+
+
+
+
+
 
 

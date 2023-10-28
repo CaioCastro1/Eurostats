@@ -1,7 +1,6 @@
 import requests
 import pandas as pd
 import datetime
-import re
 
 # Cada equipe possui um ID, que deve ser incrementado no URL de API
 ids_das_equipes = [2829,2714, 2547,2999]

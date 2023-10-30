@@ -1,3 +1,3 @@
-# Poli-J-nior_EuroStats
+# EuroStats
 
-Esse é um projeto com o intuito de automatizar a extração de dados sobre jogadores de futebol. 
+This project goal was to scrape data from the football informative site "SofaScore". After that, Powe BI dashboards were constructed. It was my first scraping and BI project.
